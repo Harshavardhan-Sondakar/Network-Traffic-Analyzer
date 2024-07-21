@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Analysis Visualization</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+
+    <div class="max-w-7xl mx-auto my-10 p-10 bg-white rounded-lg shadow-md">
+        <h1 class="text-4xl font-bold text-center text-blue-600 mb-8">Network Analysis Visualization</h1>
+        <div class="flex justify-center mb-10 space-x-4">
+            <a href="/download_analysis_csv" class="bg-blue-600 text-white py-3 px-6 rounded-full shadow-lg hover:bg-blue-700 transition duration-300">Download Analysis Report</a>
+        </div>
+        <div class="flex justify-center mb-10 space-x-4">
+            <a href="/" class="bg-blue-600 text-white py-3 px-6 rounded-full shadow-lg hover:bg-blue-700 transition duration-300">Back</a>
+        </div>
+        
+    
+        <div class="flex justify-center mb-10">
+            <div class="relative inline-block w-full max-w-xs">
+                <select id="chartDropdown" class="block appearance-none w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500">
+                    <option value="protocolChart">Protocol Distribution</option>
+                    <option value="lengthChart">Packet Length Distribution</option>
+                    <option value="dnsChart">DNS Query Distribution</option>
+                    <option value="timestampChart">Packet Count Over Time</option>
+                    <option value="sourceIpChart">Source IP Distribution</option>
+                    <option value="destinationIpChart">Destination IP Distribution</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M7 10l5 5 5-5H7z"/></svg>
+                </div>
+            </div>
+        </div>
+
+    
+        <div id="charts" class="space-y-10">
+            <div class="chart-container w-full hidden" id="protocolChartContainer">
+                <canvas id="protocolChart"></canvas>
+            </div>
+            <div class="chart-container w-full hidden" id="lengthChartContainer">
+                <canvas id="lengthChart"></canvas>
+            </div>
+            <div class="chart-container w-full hidden" id="dnsChartContainer">
+                <canvas id="dnsChart"></canvas>
+            </div>
+            <div class="chart-container w-full hidden" id="timestampChartContainer">
+                <canvas id="timestampChart"></canvas>
+            </div>
+            <div class="chart-container w-full hidden" id="sourceIpChartContainer">
+                <canvas id="sourceIpChart"></canvas>
+            </div>
+            <div class="chart-container w-full hidden" id="destinationIpChartContainer">
+                <canvas id="destinationIpChart"></canvas>
+            </div>
+        </div>
+        <div class="flex justify-center mb-10 space-x-4">
+            <h2 class="text-3xl font-bold text-center text-blue-600 mb-8">Bandwidth Usage</h2>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+         
+            fetch('/get_visualization_data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+
+                    const filteredDNSLabels = data.dns.labels.filter(label => label !== 'N/A');
+                    const filteredDNSData = data.dns.data.filter((_, index) => data.dns.labels[index] !== 'N/A');
+
+                    var protocolCtx = document.getElementById('protocolChart').getContext('2d');
+                    var protocolChart = new Chart(protocolCtx, {
+                        type: 'pie',
+                        data: {
+                            labels: data.protocols.labels,
+                            datasets: [{
+                                data: data.protocols.data,
+                                backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1', '#e83e8c', '#fd7e14']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Protocol Distribution'
+                                },
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    });
+
+                
+                    var lengthCtx = document.getElementById('lengthChart').getContext('2d');
+                    var lengthChart = new Chart(lengthCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.lengths.labels,
+                            datasets: [{
+                                label: 'Packet Length',
+                                data: data.lengths.data,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Packet Length Distribution'
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Packet Length'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Count'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                
+                    var dnsCtx = document.getElementById('dnsChart').getContext('2d');
+                    var dnsChart = new Chart(dnsCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: filteredDNSLabels,
+                            datasets: [{
+                                label: 'DNS Queries',
+                                data: filteredDNSData,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'DNS Query Distribution'
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'DNS Query'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Count'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                
+                    var timestampCtx = document.getElementById('timestampChart').getContext('2d');
+                    var timestampChart = new Chart(timestampCtx, {
+                        type: 'line',
+                        data: {
+                            labels: data.timestamps.labels,
+                            datasets: [{
+                                label: 'Packet Count',
+                                data: data.timestamps.data,
+                                backgroundColor: '#007bff',
+                                borderColor: '#007bff',
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Packet Count Over Time'
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Time'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Count'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                
+                    var sourceIpCtx = document.getElementById('sourceIpChart').getContext('2d');
+                    var sourceIpChart = new Chart(sourceIpCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.source_ips.labels,
+                            datasets: [{
+                                label: 'Source IPs',
+                                data: data.source_ips.data,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Source IP Distribution'
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Source IP'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Count'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    
+                    var destinationIpCtx = document.getElementById('destinationIpChart').getContext('2d');
+                    var destinationIpChart = new Chart(destinationIpCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.destination_ips.labels,
+                            datasets: [{
+                                label: 'Destination IPs',
+                                data: data.destination_ips.data,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: 'Destination IP Distribution'
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Destination IP'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Count'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    document.getElementById('chartDropdown').addEventListener('change', function() {
+                        var selectedChart = this.value;
+                        var chartContainers = document.querySelectorAll('.chart-container');
+
+                    
+                        chartContainers.forEach(function(container) {
+                            container.classList.add('hidden');
+                        });
+
+                    
+                        document.getElementById(selectedChart + 'Container').classList.remove('hidden');
+                    });
+
+                
+                    document.getElementById('protocolChartContainer').classList.remove('hidden');
+                })
+                .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>

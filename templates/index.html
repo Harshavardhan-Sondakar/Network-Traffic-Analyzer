@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+    <header class="bg-blue-600 py-8">
+        <div class="container mx-auto text-center text-white">
+            <h1 class="text-5xl font-bold">Network Traffic Analyzer</h1>
+            <p class="mt-2 text-lg">Analyze and visualize network traffic with ease</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto my-10 p-10 bg-white rounded-lg shadow-md">
+        <section class="mb-10">
+            <h2 class="text-3xl font-bold text-center text-blue-600 mb-8">Upload and Analyze PCAP File</h2>
+            <form id="upload-form" enctype="multipart/form-data" class="flex flex-col items-center">
+                <label for="pcap-file" class="w-full max-w-sm mx-auto">
+                    <input type="file" name="pcap" id="pcap-file" accept=".pcap" class="hidden">
+                    <div class="flex items-center justify-center w-full p-4 bg-gray-200 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-300 transition duration-300">
+                        <svg class="w-10 h-10 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0C5.383 0 0 5.383 0 12c0 6.617 5.383 12 12 12s12-5.383 12-12C24 5.383 18.617 0 12 0zm-1 18v-6H8l4-4 4 4h-3v6h-2zm10-6h-2V8H5v4H3V8a1 1 0 011-1h16a1 1 0 011 1v4z"/>
+                        </svg>
+                        <span class="ml-2 text-gray-600">Click to upload PCAP file</span>
+                    </div>
+                </label>
+                <button type="button" id="upload-btn" class="mt-6 bg-blue-600 text-white py-3 px-6 rounded-full shadow-lg hover:bg-blue-700 transition duration-300">Upload and Analyze</button>
+            </form>
+        </section>
+
+        <section class="text-center mb-6">
+            <button id="visualization-btn" onclick="window.location.href='/visualization'" class="bg-blue-600 text-white py-3 px-6 rounded-full shadow-lg hover:bg-blue-700 transition duration-300">Visualize</button>
+        </section>
+
+        <div id="loading" class="hidden flex flex-col justify-center items-center mt-8">
+            <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-16 w-16 mb-4"></div>
+            <p class="text-lg text-blue-600">Analyzing...</p>
+        </div>
+
+        <section id="results" class="mt-8"></section>
+        <section id="detailed-tables" class="mt-10 hidden">
+            <h2 class="text-3xl font-bold text-center text-blue-600 mb-8">Detailed Tables</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border border-gray-200 mb-8">
+                    <thead class="bg-blue-600 text-white">
+                        <tr>
+                            <th class="py-2 px-4">Top Source IPs</th>
+                            <th class="py-2 px-4">Packet Count</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topSourceIpsTable">
+                    </tbody>
+                </table>
+                <table class="min-w-full bg-white border border-gray-200 mb-8">
+                    <thead class="bg-blue-600 text-white">
+                        <tr>
+                            <th class="py-2 px-4">Top Destination IPs</th>
+                            <th class="py-2 px-4">Packet Count</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topDestinationIpsTable">
+                    </tbody>
+                </table>
+                <table class="min-w-full bg-white border border-gray-200 mb-8">
+                    <thead class="bg-blue-600 text-white">
+                        <tr>
+                            <th class="py-2 px-4">Top DNS Queries</th>
+                            <th class="py-2 px-4">Packet Count</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topDnsQueriesTable">
+                    </tbody>
+                </table>
+                <table class="min-w-full bg-white border border-gray-200 mb-8">
+                    <thead class="bg-blue-600 text-white">
+                        <tr>
+                            <th class="py-2 px-4">Top Ports Used</th>
+                            <th class="py-2 px-4">Packet Count</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topPortsUsedTable">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        document.getElementById('upload-btn').addEventListener('click', function() {
+            var formData = new FormData(document.getElementById('upload-form'));
+            document.getElementById('loading').classList.remove('hidden');
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').classList.add('hidden');
+                var resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = '<p class="text-lg mb-4">Number of Packets: ' + data.packet_count + '</p>';
+
+                var analysisResults = JSON.parse(data.analysis_results);
+                var table = '<div class="overflow-x-auto"><table class="min-w-full bg-white border border-gray-200"><thead><tr class="bg-blue-600 text-white"><th class="py-2 px-4">Protocol</th><th class="py-2 px-4">Source</th><th class="py-2 px-4">Destination</th><th class="py-2 px-4">Flags</th><th class="py-2 px-4">Length</th><th class="py-2 px-4">MAC Source</th><th class="py-2 px-4">MAC Destination</th><th class="py-2 px-4 min-w-max">DNS Query</th><th class="py-2 px-4">Source Port</th><th class="py-2 px-4">Destination Port</th></tr></thead><tbody>';
+                analysisResults.forEach(function(packet) {
+                    table += '<tr class="border-t"><td class="py-2 px-4">' + packet.Protocol + '</td><td class="py-2 px-4">' + packet.Source + '</td><td class="py-2 px-4">' + packet.Destination + '</td><td class="py-2 px-4">' + packet.Flags + '</td><td class="py-2 px-4">' + packet.Length + '</td><td class="py-2 px-4">' + packet['MAC Source'] + '</td><td class="py-2 px-4">' + packet['MAC Destination'] + '</td><td class="py-2 px-4">' + packet['DNS Query'] + '</td><td class="py-2 px-4">' + packet['Source Port'] + '</td><td class="py-2 px-4">' + packet['Destination Port'] + '</td></tr>';
+                });
+                table += '</tbody></table></div>';
+                resultsDiv.innerHTML += table;
+
+                var topSourceIpsTable = document.getElementById('topSourceIpsTable');
+                data.top_source_ips.forEach(ip => {
+                    let row = `<tr class="border-b"><td class="py-2 px-4">${ip[0]}</td><td class="py-2 px-4">${ip[1]}</td></tr>`;
+                    topSourceIpsTable.insertAdjacentHTML('beforeend', row);
+                });
+
+                var topDestinationIpsTable = document.getElementById('topDestinationIpsTable');
+                data.top_destination_ips.forEach(ip => {
+                    let row = `<tr class="border-b"><td class="py-2 px-4">${ip[0]}</td><td class="py-2 px-4">${ip[1]}</td></tr>`;
+                    topDestinationIpsTable.insertAdjacentHTML('beforeend', row);
+                });
+
+                var topDnsQueriesTable = document.getElementById('topDnsQueriesTable');
+                data.top_dns_queries.forEach(query => {
+                    let row = `<tr class="border-b"><td class="py-2 px-4">${query[0]}</td><td class="py-2 px-4">${query[1]}</td></tr>`;
+                    topDnsQueriesTable.insertAdjacentHTML('beforeend', row);
+                });
+
+                var topPortsUsedTable = document.getElementById('topPortsUsedTable');
+                data.top_ports_used.forEach(port => {
+                    let row = `<tr class="border-b"><td class="py-2 px-4">${port[0]}</td><td class="py-2 px-4">${port[1]}</td></tr>`;
+                    topPortsUsedTable.insertAdjacentHTML('beforeend', row);
+                });
+
+                document.getElementById('detailed-tables').classList.remove('hidden');
+            })
+            .catch(error => {
+                document.getElementById('loading').classList.add('hidden');
+                console.error('Error:', error);
+            });
+        });
+    </script>
+    <style>
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spin 1s linear infinite;
+            animation: spin 1s linear infinite;
+        }
+
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</body>
+</html>
+
